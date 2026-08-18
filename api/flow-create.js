@@ -1,12 +1,9 @@
 // api/flow-create.js — Vercel Serverless Function
 //
 // Variables en Vercel → Settings → Environment Variables
-// (marca Production + Preview, luego Redeploy obligatorio):
-//
-//   FLOW_API_KEY
-//   FLOW_SECRET_KEY
-//   FLOW_API_URL = https://sandbox.flow.cl/api   ← pruebas
-//                o https://www.flow.cl/api      ← real
+// (Production + Preview, luego Redeploy):
+//   FLOW_API_KEY, FLOW_SECRET_KEY
+//   FLOW_API_URL = https://www.flow.cl/api  (o sandbox)
 //   FLOW_URL_CONFIRMATION = https://TU-DOMINIO.vercel.app/api/flow-confirm
 //   FLOW_URL_RETURN       = https://TU-DOMINIO.vercel.app/
 
@@ -28,6 +25,40 @@ function env(name) {
   return String(v).trim().replace(/^["']|["']$/g, '');
 }
 
+/** Flow rechaza optional demasiado largo → mantener corto */
+function buildOptional(items) {
+  if (!Array.isArray(items) || !items.length) return '';
+  // Solo nombre x cantidad (sin precios ni JSON pesado)
+  const parts = items.map(function (it) {
+    const name = String((it && it.name) || 'item').slice(0, 40);
+    const qty = Number((it && it.qty) || 1);
+    return name + ' x' + qty;
+  });
+  let text = parts.join('; ');
+  // límite seguro (Flow suele fallar cerca de ~250–500 chars en optional)
+  if (text.length > 200) text = text.slice(0, 197) + '...';
+  // formato simple clave=valor / JSON mínimo
+  const json = JSON.stringify({ d: text });
+  if (json.length > 240) return JSON.stringify({ d: text.slice(0, 150) + '...' });
+  return json;
+}
+
+function buildSubject(subject, items, amount) {
+  let s = String(subject || '').trim();
+  if (!s && Array.isArray(items) && items.length) {
+    s = items
+      .map(function (it) {
+        return String((it && it.name) || 'item').slice(0, 30) + ' x' + Number((it && it.qty) || 1);
+      })
+      .join(', ');
+  }
+  if (!s) s = 'Pedido Aura Fragancias';
+  s = 'Aura Fragancias — ' + s.replace(/^Aura Fragancias\s*[—\-]\s*/i, '');
+  // subject también tiene tope práctico
+  if (s.length > 180) s = s.slice(0, 177) + '...';
+  return s;
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -47,12 +78,10 @@ module.exports = async function handler(req, res) {
   if (!apiKey || !secretKey) {
     return res.status(500).json({
       error:
-        'Faltan variables en Vercel. Revisa FLOW_API_KEY y FLOW_SECRET_KEY (Settings → Environment Variables) y haz Redeploy.',
+        'Faltan FLOW_API_KEY o FLOW_SECRET_KEY en Vercel. Revisa Environment Variables y haz Redeploy.',
       debug: {
         hasApiKey: Boolean(apiKey),
         hasSecretKey: Boolean(secretKey),
-        hasConfirm: Boolean(urlConfirmation),
-        hasReturn: Boolean(urlReturn),
         apiUrl: apiUrl,
       },
     });
@@ -60,12 +89,7 @@ module.exports = async function handler(req, res) {
 
   if (!urlConfirmation || !urlReturn) {
     return res.status(500).json({
-      error:
-        'Faltan FLOW_URL_CONFIRMATION o FLOW_URL_RETURN en Vercel. Deben ser URLs https públicas de tu sitio.',
-      debug: {
-        hasConfirm: Boolean(urlConfirmation),
-        hasReturn: Boolean(urlReturn),
-      },
+      error: 'Faltan FLOW_URL_CONFIRMATION o FLOW_URL_RETURN en Vercel.',
     });
   }
 
@@ -83,8 +107,7 @@ module.exports = async function handler(req, res) {
 
   const amount = Math.round(Number(body.amount));
   const email = String(body.email || '').trim();
-  let subject = String(body.subject || 'Pedido Aura Fragancias').trim();
-  if (subject.length > 200) subject = subject.slice(0, 197) + '...';
+  const items = Array.isArray(body.items) ? body.items : [];
 
   if (!email || !email.includes('@')) {
     return res.status(400).json({ error: 'Email inválido' });
@@ -94,9 +117,8 @@ module.exports = async function handler(req, res) {
   }
 
   const commerceOrder = 'AURA-' + Date.now() + '-' + Math.floor(Math.random() * 9999);
-  const optional = JSON.stringify({
-    items: Array.isArray(body.items) ? body.items : [],
-  });
+  const subject = buildSubject(body.subject, items, amount);
+  const optional = buildOptional(items);
 
   const params = {
     apiKey: apiKey,
@@ -107,8 +129,12 @@ module.exports = async function handler(req, res) {
     email: email,
     urlConfirmation: urlConfirmation,
     urlReturn: urlReturn,
-    optional: optional,
   };
+
+  // Solo enviar optional si hay contenido (evita errores innecesarios)
+  if (optional) {
+    params.optional = optional;
+  }
 
   params.s = sign(params, secretKey);
 
@@ -142,7 +168,6 @@ module.exports = async function handler(req, res) {
         error: String(msg),
         status: r.status,
         apiUrl: apiUrl,
-        apiKeyPrefix: apiKey.slice(0, 8) + '…',
       });
     }
 
