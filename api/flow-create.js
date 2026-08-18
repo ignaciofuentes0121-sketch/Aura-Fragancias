@@ -26,20 +26,21 @@ function env(name) {
 }
 
 /** Flow rechaza optional demasiado largo → mantener corto */
-function buildOptional(items) {
-  if (!Array.isArray(items) || !items.length) return '';
-  // Solo nombre x cantidad (sin precios ni JSON pesado)
-  const parts = items.map(function (it) {
-    const name = String((it && it.name) || 'item').slice(0, 40);
-    const qty = Number((it && it.qty) || 1);
-    return name + ' x' + qty;
-  });
-  let text = parts.join('; ');
-  // límite seguro (Flow suele fallar cerca de ~250–500 chars en optional)
-  if (text.length > 200) text = text.slice(0, 197) + '...';
-  // formato simple clave=valor / JSON mínimo
+function buildOptional(items, cust) {
+  const bits = [];
+  if (cust && cust.name) bits.push(String(cust.name).slice(0, 36));
+  if (cust && cust.phone) bits.push(String(cust.phone).slice(0, 18));
+  if (Array.isArray(items) && items.length) {
+    const lines = items.map(function (it) {
+      return String((it && it.name) || 'item').slice(0, 28) + 'x' + Number((it && it.qty) || 1);
+    });
+    bits.push(lines.join(','));
+  }
+  if (!bits.length) return '';
+  let text = bits.join('|');
+  if (text.length > 180) text = text.slice(0, 177) + '...';
   const json = JSON.stringify({ d: text });
-  if (json.length > 240) return JSON.stringify({ d: text.slice(0, 150) + '...' });
+  if (json.length > 240) return JSON.stringify({ d: text.slice(0, 140) + '...' });
   return json;
 }
 
