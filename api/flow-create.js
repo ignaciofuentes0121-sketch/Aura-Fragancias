@@ -31,9 +31,7 @@ module.exports = async function handler(req, res) {
   if (!apiKey || !secretKey) {
     return res.status(500).json({ error: 'Faltan FLOW_API_KEY o FLOW_SECRET_KEY en Vercel' });
   }
-  if (!urlConfirmation || !urlReturn) {
-    return res.status(500).json({ error: 'Faltan FLOW_URL_CONFIRMATION o FLOW_URL_RETURN en Vercel' });
-  }
+
 
   let body = req.body;
   if (typeof body === 'string') {
