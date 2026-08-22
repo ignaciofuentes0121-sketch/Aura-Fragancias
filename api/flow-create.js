@@ -27,41 +27,49 @@ function env(name) {
 
 /** Flow rechaza optional demasiado largo → mantener corto */
 function buildOptional(items, cust) {
-  const bits = [];
-  if (cust && cust.promo) bits.push('PROMO:' + String(cust.promo).slice(0, 24));
-  if (cust && cust.name) bits.push(String(cust.name).slice(0, 36));
-  if (cust && cust.phone) bits.push(String(cust.phone).slice(0, 18));
+  const o = {};
+  if (cust && cust.phone) o.tel = String(cust.phone).replace(/\s+/g, '').slice(0, 20);
+  if (cust && cust.name) o.nom = String(cust.name).slice(0, 40);
+  if (cust && cust.promo) o.promo = String(cust.promo).toUpperCase().slice(0, 24);
   if (Array.isArray(items) && items.length) {
-    const lines = items.map(function (it) {
-      return String((it && it.name) || 'item').slice(0, 28) + 'x' + Number((it && it.qty) || 1);
-    });
-    bits.push(lines.join(','));
+    o.items = items
+      .map(function (it) {
+        return String((it && it.name) || 'item').slice(0, 24) + 'x' + Number((it && it.qty) || 1);
+      })
+      .join(',');
+    if (o.items.length > 80) o.items = o.items.slice(0, 77) + '...';
   }
-  if (!bits.length) return '';
-  let text = bits.join('|');
-  if (text.length > 180) text = text.slice(0, 177) + '...';
-  const json = JSON.stringify({ d: text });
-  if (json.length > 240) return JSON.stringify({ d: text.slice(0, 140) + '...' });
-  return json;
+  const json = JSON.stringify(o);
+  if (json.length > 240) {
+    return JSON.stringify({
+      tel: o.tel || '',
+      promo: o.promo || '',
+      nom: (o.nom || '').slice(0, 20),
+    });
+  }
+  return Object.keys(o).length ? json : '';
 }
 
 function buildSubject(subject, items, amount, cust) {
-  let s = String(subject || '').trim();
-  if (cust && cust.promo) {
-    const p = String(cust.promo).toUpperCase().slice(0, 24);
-    if (s.indexOf(p) === -1) s = '⭐' + p + ' | ' + s;
-  }
-  if (!s && Array.isArray(items) && items.length) {
-    s = items
+  const parts = [];
+  if (cust && cust.promo) parts.push('⭐' + String(cust.promo).toUpperCase().slice(0, 24));
+  if (cust && cust.name) parts.push(String(cust.name).slice(0, 40));
+  if (cust && cust.phone) parts.push('Tel:' + String(cust.phone).replace(/\s+/g, '').slice(0, 18));
+  let itemsPart = String(subject || '').trim();
+  itemsPart = itemsPart.replace(/^⭐[^|]+\|\s*/g, '');
+  // quitar posibles "Nombre |" o "Tel: |" repetidos del frontend
+  itemsPart = itemsPart.replace(/^[^|]*Tel:[^|]*\|\s*/i, '');
+  if (!itemsPart && Array.isArray(items) && items.length) {
+    itemsPart = items
       .map(function (it) {
-        return String((it && it.name) || 'item').slice(0, 30) + ' x' + Number((it && it.qty) || 1);
+        return String((it && it.name) || 'item').slice(0, 28) + ' x' + Number((it && it.qty) || 1);
       })
       .join(', ');
   }
-  if (!s) s = 'Pedido Aura Fragancias';
-  s = 'Aura Fragancias — ' + s.replace(/^Aura Fragancias\s*[—\-]\s*/i, '');
-  // subject también tiene tope práctico
-  if (s.length > 180) s = s.slice(0, 177) + '...';
+  if (!itemsPart) itemsPart = 'Pedido Aura';
+  parts.push(itemsPart);
+  let s = parts.join(' | ');
+  if (s.length > 200) s = s.slice(0, 197) + '...';
   return s;
 }
 
