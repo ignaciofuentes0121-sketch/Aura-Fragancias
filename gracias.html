@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aura Fragancias · Resultado del pago</title>
+<style>
+  :root {
+    --bg: #FBF6EC;
+    --text: #1A1510;
+    --muted: #6B6358;
+    --brass: #C4A35A;
+    --line: #E5D9C5;
+    --ok: #2D6A4F;
+    --warn: #9A6B2F;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    width: min(420px, 100%);
+    background: #fff;
+    border: 1px solid var(--line);
+    padding: 32px 28px;
+    text-align: center;
+  }
+  .mark {
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+  .mark span { color: var(--brass); }
+  h1 {
+    font-size: 1.35rem;
+    font-weight: 600;
+    margin: 0 0 10px;
+    line-height: 1.3;
+  }
+  p {
+    margin: 0 0 12px;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--muted);
+  }
+  .status {
+    display: inline-block;
+    margin: 8px 0 18px;
+    padding: 6px 12px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .status--ok { background: rgba(45,106,79,0.12); color: var(--ok); }
+  .status--pending { background: rgba(154,107,47,0.14); color: var(--warn); }
+  .status--fail { background: rgba(140,40,40,0.1); color: #8C2828; }
+  .actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 22px;
+  }
+  a.btn {
+    display: block;
+    padding: 13px 16px;
+    text-decoration: none;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  a.btn-primary {
+    background: #1A1510;
+    color: #FBF6EC;
+  }
+  a.btn-ghost {
+    border: 1px solid var(--line);
+    color: var(--text);
+  }
+  .detail {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--muted);
+    word-break: break-all;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="mark">Aura <span>Fragancias</span></div>
+    <h1 id="title">Procesando…</h1>
+    <div class="status status--pending" id="badge">Espera</div>
+    <p id="msg">Estamos confirmando el estado de tu pago con Flow.</p>
+    <div class="actions">
+      <a class="btn btn-primary" id="wa" href="https://wa.me/56951435986?text=Hola%2C%20acabo%20de%20pagar%20por%20Webpay%20y%20quiero%20coordinar%20la%20entrega." target="_blank" rel="noopener">Coordinar por WhatsApp</a>
+      <a class="btn btn-ghost" href="/">Volver al catálogo</a>
+    </div>
+    <div class="detail" id="detail" hidden></div>
+  </div>
+<script>
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var token = params.get('token') || '';
+  var status = (params.get('status') || params.get('payment_status') || '').toLowerCase();
+
+  var title = document.getElementById('title');
+  var badge = document.getElementById('badge');
+  var msg = document.getElementById('msg');
+  var detail = document.getElementById('detail');
+
+  var kind = 'pending';
+  if (status === '2' || status === 'paid' || status === 'success' || status === 'ok') kind = 'ok';
+  if (status === '0' || status === 'cancelled' || status === 'canceled' || status === 'failed' || status === 'rejected') kind = 'fail';
+
+  if (kind === 'ok') {
+    title.textContent = 'Pago recibido';
+    badge.textContent = 'Pagado';
+    badge.className = 'status status--ok';
+    msg.textContent = 'Gracias. Recibimos tu pago. Escríbenos por WhatsApp para coordinar la entrega (metro, fines de semana).';
+  } else if (kind === 'fail') {
+    title.textContent = 'Pago no completado';
+    badge.textContent = 'Cancelado o fallido';
+    badge.className = 'status status--fail';
+    msg.textContent = 'No se concretó el cobro. Puedes volver al catálogo e intentarlo de nuevo, o escribirnos por WhatsApp.';
+  } else {
+    title.textContent = 'Gracias por tu compra';
+    badge.textContent = 'Listo';
+    badge.className = 'status status--ok';
+    msg.textContent = 'Si completaste el pago, te llegará el comprobante al correo. Coordina la entrega por WhatsApp (metro, fines de semana).';
+  }
+
+  if (token) {
+    detail.hidden = false;
+    detail.textContent = 'Ref: ' + token.slice(0, 16) + '…';
+  }
+})();
+</script>
+</body>
+</html>
