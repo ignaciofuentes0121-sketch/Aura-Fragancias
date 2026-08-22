@@ -82,6 +82,7 @@
     background: #1A1510;
     color: #FBF6EC;
   }
+  a.btn[hidden] { display: none !important; }
   a.btn-ghost {
     border: 1px solid var(--line);
     color: var(--text);
@@ -123,24 +124,30 @@
   if (status === '2' || status === 'paid' || status === 'success' || status === 'ok') kind = 'ok';
   if (status === '0' || status === 'cancelled' || status === 'canceled' || status === 'failed' || status === 'rejected') kind = 'fail';
 
+  var wa = document.getElementById('wa');
+
   if (kind === 'ok') {
     title.textContent = 'Pago recibido';
     badge.textContent = 'Pagado';
     badge.className = 'status status--ok';
     msg.textContent = 'Gracias. Recibimos tu pago. Escríbenos por WhatsApp para coordinar la entrega (metro, fines de semana).';
+    if (wa) wa.hidden = false;
   } else if (kind === 'fail') {
     title.textContent = 'Pago no completado';
-    badge.textContent = 'Cancelado o fallido';
+    badge.textContent = 'Cancelado';
     badge.className = 'status status--fail';
-    msg.textContent = 'Cancelaste el pago o no se completó. Puedes volver al catálogo e intentarlo de nuevo, o escribirnos por WhatsApp.';
+    msg.textContent = 'Cancelaste el pago o no se completó. Puedes volver al catálogo e intentarlo de nuevo cuando quieras.';
+    if (wa) wa.hidden = true;
   } else {
-    title.textContent = 'Gracias por tu compra';
-    badge.textContent = 'Listo';
-    badge.className = 'status status--ok';
-    msg.textContent = 'Si completaste el pago, te llegará el comprobante al correo. Coordina la entrega por WhatsApp (metro, fines de semana).';
+    // Retorno sin estado claro: no empujar WhatsApp de coordinación de entrega
+    title.textContent = 'Pago no confirmado';
+    badge.textContent = 'Sin confirmar';
+    badge.className = 'status status--pending';
+    msg.textContent = 'No tenemos confirmación de un pago exitoso. Si cancelaste, no se realizó ningún cargo. Puedes volver al catálogo.';
+    if (wa) wa.hidden = true;
   }
 
-  if (token) {
+  if (token && kind === 'ok') {
     detail.hidden = false;
     detail.textContent = 'Ref: ' + token.slice(0, 16) + '…';
   }
