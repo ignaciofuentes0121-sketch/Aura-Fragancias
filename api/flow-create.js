@@ -28,6 +28,7 @@ function env(name) {
 /** Flow rechaza optional demasiado largo → mantener corto */
 function buildOptional(items, cust) {
   const bits = [];
+  if (cust && cust.promo) bits.push('PROMO:' + String(cust.promo).slice(0, 24));
   if (cust && cust.name) bits.push(String(cust.name).slice(0, 36));
   if (cust && cust.phone) bits.push(String(cust.phone).slice(0, 18));
   if (Array.isArray(items) && items.length) {
@@ -44,8 +45,12 @@ function buildOptional(items, cust) {
   return json;
 }
 
-function buildSubject(subject, items, amount) {
+function buildSubject(subject, items, amount, cust) {
   let s = String(subject || '').trim();
+  if (cust && cust.promo) {
+    const p = String(cust.promo).toUpperCase().slice(0, 24);
+    if (s.indexOf(p) === -1) s = '⭐' + p + ' | ' + s;
+  }
   if (!s && Array.isArray(items) && items.length) {
     s = items
       .map(function (it) {
@@ -118,7 +123,7 @@ module.exports = async function handler(req, res) {
   }
 
   const commerceOrder = 'AURA-' + Date.now() + '-' + Math.floor(Math.random() * 9999);
-  const subject = buildSubject(body.subject, items, amount);
+  const subject = buildSubject(body.subject, items, amount, body.customer || {});
   const optional = buildOptional(items);
 
   const params = {
